@@ -1,59 +1,70 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class TransferenciasScreen extends StatefulWidget {
   const TransferenciasScreen({super.key});
+
   @override
-  _TransferenciasScreenState createState() => _TransferenciasScreenState();
+  State<TransferenciasScreen> createState() => _TransferenciasScreenState();
 }
 
 class _TransferenciasScreenState extends State<TransferenciasScreen> {
-  final _idCtrl = TextEditingController();
+  final _idCtrl     = TextEditingController();
   final _nombreCtrl = TextEditingController();
-  final _montoCtrl = TextEditingController();
-  bool _saving = false;
+  final _montoCtrl  = TextEditingController();
+  bool  _saving      = false;
+
+  // Referencia al nodo "transferencias" en la Realtime Database
+  final DatabaseReference _dbRef =
+      FirebaseDatabase.instance.ref('transferencias');
 
   Future<void> _guardar() async {
     setState(() => _saving = true);
     try {
-      await FirebaseFirestore.instance.collection('transferencias').add({
+      await _dbRef.push().set({
         'id': _idCtrl.text.trim(),
         'destinatario': _nombreCtrl.text.trim(),
         'monto': double.tryParse(_montoCtrl.text) ?? 0.0,
-        'fecha': FieldValue.serverTimestamp(),
+        'fecha': DateTime.now().toIso8601String(),
       });
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Éxito'),
-          content: const Text('Transferencia guardada.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: Colors.black,
+            title: const Text('Éxito', style: TextStyle(color: Colors.white)),
+            content: const Text('Transferencia guardada', style: TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK', style: TextStyle(color: Colors.orange)),
+              ),
+            ],
+          ),
+        );
+      }
       _idCtrl.clear();
       _nombreCtrl.clear();
       _montoCtrl.clear();
     } catch (e) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Error'),
-          content: Text('No se pudo guardar: $e'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: Colors.black,
+            title: const Text('Error', style: TextStyle(color: Colors.white)),
+            content: Text('No se pudo guardar: $e', style: const TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK', style: TextStyle(color: Colors.orange)),
+              ),
+            ],
+          ),
+        );
+      }
     } finally {
-      setState(() => _saving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -68,38 +79,113 @@ class _TransferenciasScreenState extends State<TransferenciasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Transferencias')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _idCtrl,
-              decoration:
-                  const InputDecoration(labelText: 'ID de transferencia'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _nombreCtrl,
-              decoration:
-                  const InputDecoration(labelText: 'Nombre destinatario'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _montoCtrl,
-              decoration:
-                  const InputDecoration(labelText: 'Monto a transferir'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 24),
-            _saving
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _guardar,
-                    child: const Text('Guardar'),
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Imagen de fondo
+          Image.asset(
+            'assets/images/bank_icon_4.png',
+            fit: BoxFit.cover,
+          ),
+          // Overlay oscuro
+          Container(color: Colors.black.withOpacity(0.7)),
+          // Formulario
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Realiza tu transferencia',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-          ],
-        ),
+                  const SizedBox(height: 32),
+                  // ID
+                  TextField(
+                    controller: _idCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'ID de transferencia',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      prefixIcon: const Icon(Icons.confirmation_number, color: Colors.white70),
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white38),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.orange),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Nombre destinatario
+                  TextField(
+                    controller: _nombreCtrl,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Nombre destinatario',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      prefixIcon: const Icon(Icons.person, color: Colors.white70),
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white38),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.orange),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Monto
+                  TextField(
+                    controller: _montoCtrl,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Monto a transferir',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      prefixIcon: const Icon(Icons.attach_money, color: Colors.white70),
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white38),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.orange),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  // Botón guardar
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: _saving
+                        ? const Center(
+                            child: CircularProgressIndicator(color: Colors.orange),
+                          )
+                        : ElevatedButton(
+                            onPressed: _guardar,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text(
+                              'Guardar',
+                              style: TextStyle(color: Colors.black, fontSize: 18),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
